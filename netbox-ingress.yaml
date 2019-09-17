@@ -1,0 +1,20 @@
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/proxy-body-size: "0"
+  name: netbox
+  namespace: netbox-community
+spec:
+  rules:
+  - host: netbox.company.ca #changeme
+    http:
+      paths:
+      - backend:
+          serviceName: netbox
+          servicePort: 80
+  tls: # used in combination with Cert-Manager
+  - hosts:
+    - netbox.company.ca #changeme
+    secretName: netbox-tls # creates the certificate information as a secret within the namespace

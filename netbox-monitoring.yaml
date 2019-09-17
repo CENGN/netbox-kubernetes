@@ -1,0 +1,18 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: netbox-community-metrics
+  namespace: monitoring
+  labels:
+    k8s-app: netbox-community-metrics
+spec:
+  namespaceSelector:
+    matchNames:
+      - netbox-community
+  selector:
+    matchLabels:
+      k8s-app: netbox-community-metrics
+  endpoints:
+  - port: http
+    path: /metrics
+    interval: 10s

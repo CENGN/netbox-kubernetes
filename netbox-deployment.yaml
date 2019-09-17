@@ -1,0 +1,234 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: netbox
+  namespace: netbox-community
+  labels:
+    k8s-app: netbox
+spec:
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        k8s-app: netbox
+    spec:
+      containers:
+      # NetBox container using the netbox-docker image: https://github.com/netbox-community/netbox-docker
+      - name: netbox
+        image: netboxcommunity/netbox:v2.6.3-ldap
+        ports:
+        - name: http
+          containerPort: 80
+        readinessProbe: # will mark the pod as ready once the initialization script is completed and will probe every 5 seconds 
+          httpGet: 
+            path: /
+            port: http
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        env:
+        # More configuration can be added via: https://netbox.readthedocs.io/en/stable/configuration/optional-settings/
+        - name: ALLOWED_HOSTS
+          valueFrom:
+            configMapKeyRef:
+              key: ALLOWED_HOSTS
+              name: netbox-configmap
+        - name: DB_HOST
+          valueFrom:
+            configMapKeyRef:
+              key: DB_HOST
+              name: netbox-configmap
+        - name: DB_NAME
+          valueFrom:
+            configMapKeyRef:
+              key: DB_NAME
+              name: netbox-configmap
+        - name: DB_USER
+          valueFrom:
+            configMapKeyRef:
+              key: DB_USER
+              name: netbox-configmap
+        - name: EMAIL_FROM
+          valueFrom:
+            configMapKeyRef:
+              key: EMAIL_FROM
+              name: netbox-configmap
+        - name: EMAIL_PORT
+          valueFrom:
+            configMapKeyRef:
+              key: EMAIL_PORT
+              name: netbox-configmap
+        - name: EMAIL_SERVER
+          valueFrom:
+            configMapKeyRef:
+              key: EMAIL_SERVER
+              name: netbox-configmap
+        - name: EMAIL_TIMEOUT
+          valueFrom:
+            configMapKeyRef:
+              key: EMAIL_TIMEOUT
+              name: netbox-configmap
+        - name: EMAIL_USERNAME
+          valueFrom:
+            configMapKeyRef:
+              key: EMAIL_USERNAME
+              name: netbox-configmap
+        - name: EXEMPT_VIEW_PERMISSIONS
+          valueFrom:
+            configMapKeyRef: 
+              key: EXEMPT_VIEW_PERMISSIONS
+              name: netbox-configmap
+        - name: LOGIN_REQUIRED
+          valueFrom:
+            configMapKeyRef:
+              key: LOGIN_REQUIRED
+              name: netbox-configmap
+        - name: METRICS_ENABLED
+          valueFrom:
+            configMapKeyRef:
+              key: METRICS_ENABLED
+              name: netbox-configmap
+        - name: NETBOX_USERNAME
+          valueFrom:
+            configMapKeyRef:
+              key: NETBOX_USERNAME
+              name: netbox-configmap
+        - name: REDIS_HOST
+          valueFrom: 
+            configMapKeyRef:
+              key: REDIS_HOST
+              name: netbox-configmap
+        
+        volumeMounts:
+        # Mounting secrets for netbox and other related components
+        - name: auth-ldap-bind-password
+          mountPath: /run/secrets/auth_ldap_bind_password
+          subPath: auth_ldap_bind_password
+          readOnly: true
+        - name: db-password 
+          mountPath: /run/secrets/db_password
+          subPath: db_password
+          readOnly: true 
+        - name: email-password
+          mountPath: /run/secrets/email_password
+          subPath: email_password
+          readOnly: true
+        - name: napalm-password
+          mountPath: /run/secrets/napalm_password
+          subPath: napalm_password 
+          readOnly: true
+        - name: redis-password
+          mountPath: /run/secrets/redis_password
+          subPath: redis_password
+        - name: secret-key
+          mountPath: /run/secrets/secret_key
+          subPath: secret_key
+          readOnly: true
+        - name: superuser-api-token
+          mountPath: /run/secrets/superuser_api_token
+          subPath: superuser_api_token 
+        - name: superuser-password
+          mountPath: /run/secrets/superuser_password
+          subPath: superuser_password
+          readOnly: true
+
+        # Persistent Volume paths
+        - name: netbox-static-files # Shared directory with the nginx container for static files
+          mountPath: /opt/netbox/netbox/static
+        - name: netbox-media-files # Allows for multiple replicas of the netbox pod to be available
+          mountPath: /etc/netbox/media
+        - name: ldap-config # Allows for LDAP authentication to work
+          subPath: ldap_config.py
+          mountPath: /opt/netbox/netbox/netbox/ldap_config.py
+      
+      # nginx sidecar container used to serve static files
+      - name: nginx
+        image: nginx:1.17.3-alpine
+        volumeMounts:
+        - name: netbox-static-files
+          mountPath: /opt/netbox/netbox/static
+        - name: netbox-nginx-config
+          subPath: nginx.conf
+          mountPath: /etc/nginx/nginx.conf
+      
+      volumes:
+      # Secret volumes
+      - name: netbox-secret # contains most netbox secrets that would be used
+        secret:
+          secretName: netbox-secret
+      - name: netbox-redis # contains the password used for redis caching
+        secret:
+          secretName: netbox-redis
+      
+      # Populate via secret
+      - name: auth-ldap-bind-password
+        secret: 
+          secretName: netbox-secret
+          items: 
+          - key: auth_ldap_bind_password
+            path: auth_ldap_bind_password
+      - name: db-password
+        secret: 
+          secretName: netbox-community-postgresql
+          items: 
+          - key: postgresql-password
+            path: db_password
+      - name: email-password
+        secret: 
+          secretName: netbox-secret
+          items:
+          - key: email_password
+            path: email_password
+      - name: napalm-password
+        secret: 
+          secretName: netbox-secret
+          items:
+          - key: napalm_password
+            path: napalm_password            
+      - name: redis-password
+        secret: 
+          secretName: netbox-redis
+          items:
+          - key: redis-password
+            path: redis_password
+      - name: secret-key
+        secret: 
+          secretName: netbox-secret
+          items: 
+          - key: secret_key
+            path: secret_key
+      - name: superuser-password
+        secret: 
+          secretName: netbox-secret
+          items:
+          - key: superuser_password
+            path: superuser_password
+      - name: superuser-api-token
+        secret: 
+          secretName: netbox-secret
+          items:
+          - key: superuser_api_token
+            path: superuser_api_token
+
+      # Reference to configmaps and PVs
+      - name: ldap-config
+        configMap:
+          name: netbox-configmap
+          items:
+            - key: ldap_config.py
+              path: ldap_config.py
+      - name: netbox-nginx-config
+        configMap:
+          name: netbox-configmap
+          items:
+            - key: nginx.conf
+              path: nginx.conf
+      - name: netbox-static-files
+        emptyDir: {}
+      - name: netbox-media-files
+        flexVolume: # in this example, we use Ceph as our storage backend, managed by the Rook operator: https://github.com/rook/rook/
+          driver: ceph.rook.io/rook #changeme
+          fsType: ceph
+          options:
+            fsName: sharedfs
+            clusterNamespace: rook-ceph
+            path: /netbox-community-media # a premade path in the shared filesystem specifically for netbox related files
