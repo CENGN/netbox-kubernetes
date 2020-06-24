@@ -7,6 +7,9 @@ metadata:
     k8s-app: netbox
 spec:
   replicas: 3
+  selector:
+    matchLabels:
+      k8s-app: netbox
   template:
     metadata:
       labels:
@@ -15,12 +18,12 @@ spec:
       containers:
       # NetBox container using the netbox-docker image: https://github.com/netbox-community/netbox-docker
       - name: netbox
-        image: netboxcommunity/netbox:v2.6.3-ldap
+        image: netboxcommunity/netbox:v2.8.5-ldap
         ports:
         - name: http
           containerPort: 80
-        readinessProbe: # will mark the pod as ready once the initialization script is completed and will probe every 5 seconds 
-          httpGet: 
+        readinessProbe: # will mark the pod as ready once the initialization script is completed and will probe every 5 seconds
+          httpGet:
             path: /
             port: http
           initialDelaySeconds: 5
@@ -31,6 +34,11 @@ spec:
           valueFrom:
             configMapKeyRef:
               key: ALLOWED_HOSTS
+              name: netbox-configmap
+        - name: CHANGELOG_RETENTION
+          valueFrom:
+            configMapKeyRef:
+              key: CHANGELOG_RETENTION
               name: netbox-configmap
         - name: DB_HOST
           valueFrom:
@@ -74,7 +82,7 @@ spec:
               name: netbox-configmap
         - name: EXEMPT_VIEW_PERMISSIONS
           valueFrom:
-            configMapKeyRef: 
+            configMapKeyRef:
               key: EXEMPT_VIEW_PERMISSIONS
               name: netbox-configmap
         - name: LOGIN_REQUIRED
@@ -93,28 +101,43 @@ spec:
               key: NETBOX_USERNAME
               name: netbox-configmap
         - name: REDIS_HOST
-          valueFrom: 
+          valueFrom:
             configMapKeyRef:
               key: REDIS_HOST
               name: netbox-configmap
-        
+        - name: REDIS_CACHE_HOST
+          valueFrom:
+            configMapKeyRef:
+              key: REDIS_CACHE_HOST
+              name: netbox-configmap
+        - name: REDIS_PORT
+          valueFrom:
+            configMapKeyRef:
+              key: REDIS_PORT
+              name: netbox-configmap
+        - name: REDIS_CACHE_PORT
+          valueFrom:
+            configMapKeyRef:
+              key: REDIS_CACHE_PORT
+              name: netbox-configmap
+
         volumeMounts:
         # Mounting secrets for netbox and other related components
         - name: auth-ldap-bind-password
           mountPath: /run/secrets/auth_ldap_bind_password
           subPath: auth_ldap_bind_password
           readOnly: true
-        - name: db-password 
+        - name: db-password
           mountPath: /run/secrets/db_password
           subPath: db_password
-          readOnly: true 
+          readOnly: true
         - name: email-password
           mountPath: /run/secrets/email_password
           subPath: email_password
           readOnly: true
         - name: napalm-password
           mountPath: /run/secrets/napalm_password
-          subPath: napalm_password 
+          subPath: napalm_password
           readOnly: true
         - name: redis-password
           mountPath: /run/secrets/redis_password
@@ -125,7 +148,7 @@ spec:
           readOnly: true
         - name: superuser-api-token
           mountPath: /run/secrets/superuser_api_token
-          subPath: superuser_api_token 
+          subPath: superuser_api_token
         - name: superuser-password
           mountPath: /run/secrets/superuser_password
           subPath: superuser_password
@@ -139,7 +162,7 @@ spec:
         - name: ldap-config # Allows for LDAP authentication to work
           subPath: ldap_config.py
           mountPath: /opt/netbox/netbox/netbox/ldap_config.py
-      
+
       # nginx sidecar container used to serve static files
       - name: nginx
         image: nginx:1.17.3-alpine
@@ -149,7 +172,9 @@ spec:
         - name: netbox-nginx-config
           subPath: nginx.conf
           mountPath: /etc/nginx/nginx.conf
-      
+
+      restartPolicy: Always
+
       volumes:
       # Secret volumes
       - name: netbox-secret # contains most netbox secrets that would be used
@@ -158,52 +183,52 @@ spec:
       - name: netbox-redis # contains the password used for redis caching
         secret:
           secretName: netbox-redis
-      
+
       # Populate via secret
       - name: auth-ldap-bind-password
-        secret: 
+        secret:
           secretName: netbox-secret
-          items: 
+          items:
           - key: auth_ldap_bind_password
             path: auth_ldap_bind_password
       - name: db-password
-        secret: 
+        secret:
           secretName: netbox-community-postgresql
-          items: 
+          items:
           - key: postgresql-password
             path: db_password
       - name: email-password
-        secret: 
+        secret:
           secretName: netbox-secret
           items:
           - key: email_password
             path: email_password
       - name: napalm-password
-        secret: 
+        secret:
           secretName: netbox-secret
           items:
           - key: napalm_password
-            path: napalm_password            
+            path: napalm_password
       - name: redis-password
-        secret: 
+        secret:
           secretName: netbox-redis
           items:
           - key: redis-password
             path: redis_password
       - name: secret-key
-        secret: 
+        secret:
           secretName: netbox-secret
-          items: 
+          items:
           - key: secret_key
             path: secret_key
       - name: superuser-password
-        secret: 
+        secret:
           secretName: netbox-secret
           items:
           - key: superuser_password
             path: superuser_password
       - name: superuser-api-token
-        secret: 
+        secret:
           secretName: netbox-secret
           items:
           - key: superuser_api_token
@@ -225,10 +250,6 @@ spec:
       - name: netbox-static-files
         emptyDir: {}
       - name: netbox-media-files
-        flexVolume: # in this example, we use Ceph as our storage backend, managed by the Rook operator: https://github.com/rook/rook/
-          driver: ceph.rook.io/rook #changeme
-          fsType: ceph
-          options:
-            fsName: sharedfs
-            clusterNamespace: rook-ceph
-            path: /netbox-community-media # a premade path in the shared filesystem specifically for netbox related files
+        persistentVolumeClaim:
+          claimName: netbox-media-pvc
+          readOnly: false

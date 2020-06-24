@@ -8,6 +8,7 @@ data:
   # More configuration can be added via: https://netbox.readthedocs.io/en/stable/configuration/optional-settings/
   #changeme
   ALLOWED_HOSTS: '*'
+  CHANGELOG_RETENTION: "90"
   DB_HOST: netbox-community-postgresql
   DB_NAME: netbox
   DB_USER: netbox
@@ -20,8 +21,9 @@ data:
   LOGIN_REQUIRED: "true"
   METRICS_ENABLED: "true"
   NETBOX_USERNAME: guest
-  REDIS_HOST: netbox-redis-master
+  REDIS_HOST: netbox-community-redis-master
   REDIS_PORT: "6379"
+  REDIS_CACHE_PORT: "6379"
   REDIS_DATABASE: "0"
   REDIS_CACHE_DATABASE: "1"
   SUPERUSER_EMAIL: admin@example.com
@@ -62,7 +64,7 @@ data:
     }
 
   # LDAP configuration against Microsoft Acive Directory
-  # For more information around LDAP, see https://netbox.readthedocs.io/en/stable/installation/4-ldap/ 
+  # For more information around LDAP, see https://netbox.readthedocs.io/en/stable/installation/4-ldap/
   ldap_config.py: |
     import ldap
     from django_auth_ldap.config import LDAPSearch, NestedGroupOfNamesType
@@ -103,7 +105,7 @@ data:
     AUTH_LDAP_GROUP_SEARCH = LDAPSearch("<LDAP_group_search>") #changeme
 
     AUTH_LDAP_GROUP_TYPE = NestedGroupOfNamesType()
-    
+
     AUTH_LDAP_USER_FLAGS_BY_GROUP = {
       "is_active": ["<LDAP_group>"], #changeme
       "is_staff": ["<LDAP_group>"], #changeme
