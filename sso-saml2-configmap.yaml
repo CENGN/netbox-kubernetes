@@ -1,0 +1,10 @@
+apiVersion: v1
+data:
+  sso-saml2-metadata.xml: |
+    # Just a template. Replace content with saml2 metadata of your SSO solution, if applicable.
+    #changeme
+kind: ConfigMap
+metadata:
+  creationTimestamp: null
+  name: sso-saml2-xml
+  namespace: netbox

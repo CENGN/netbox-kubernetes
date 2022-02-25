@@ -19,6 +19,7 @@ data:
   EMAIL_USERNAME: foo
   EXEMPT_VIEW_PERMISSIONS: ''
   LOGIN_REQUIRED: "true"
+  MEDIA_ROOT: /opt/netbox/netbox/media
   METRICS_ENABLED: "true"
   NETBOX_USERNAME: guest
   REDIS_HOST: netbox-community-redis-master
@@ -28,40 +29,16 @@ data:
   REDIS_CACHE_DATABASE: "1"
   SUPERUSER_EMAIL: admin@example.com
   SUPERUSER_NAME: admin
-
-  # ngin.conf
-  # client_max_body_size used to increase limit on attachement sizes
-  nginx.conf: |
-    worker_processes 1;
-    events {
-        worker_connections  1024;
-    }
-    http {
-        include       /etc/nginx/mime.types;
-        default_type  application/octet-stream;
-        sendfile        on;
-        tcp_nopush     on;
-        keepalive_timeout  65;
-        gzip  on;
-        server_tokens off;
-        server {
-            client_max_body_size 10M;
-            listen 80;
-            server_name 127.0.0.1;
-            access_log off;
-            location /static/ {
-                expires 30d;
-                alias /opt/netbox/netbox/static/;
-            }
-            location / {
-                proxy_pass http://127.0.0.1:8001;
-                proxy_set_header X-Forwarded-Host $http_host;
-                proxy_set_header X-Real-IP $remote_addr;
-                proxy_set_header X-Forwarded-Proto $scheme;
-                add_header P3P 'CP="ALL DSP COR PSAa PSDa OUR NOR ONL UNI COM NAV"';
-            }
-        }
-    }
+  MAINTENANCE_MODE: 'False'
+  DEBUG: 'False'
+  REMOTE_AUTH_ENABLED: 'True'
+  REMOTE_AUTH_AUTO_CREATE_USER: 'True'
+  # Regular LDAP Backend
+  REMOTE_AUTH_BACKEND: netbox.authentication.LDAPBackend
+  # SSO Enabled Backend
+  #REMOTE_AUTH_BACKEND: 'django3_saml2_nbplugin.backends.SAML2CustomAttrUserBackend'
+  REMOTE_AUTH_HEADER: 'HTTP_REMOTE_USER'
+  REMOTE_AUTH_DEFAULT_GROUPS: 'sso-default-user' #changeme
 
   # LDAP configuration against Microsoft Acive Directory
   # For more information around LDAP, see https://netbox.readthedocs.io/en/stable/installation/4-ldap/
@@ -79,11 +56,12 @@ data:
             with f:
                 return f.readline().strip()
 
-    AUTH_LDAP_SERVER_URI = "<LDAP_server_URI" #changeme
+    AUTH_LDAP_SERVER_URI = "<LDAP_server_URI>" #changeme
     AUTH_LDAP_CONNECTION_OPTIONS = {
       ldap.OPT_REFERRALS: 0
     }
-    AUTH_LDAP_START_TLS = True
+    # Uncomment line below if using TLS
+    #AUTH_LDAP_START_TLS = True
 
     # Service user credentials. This accout will be making all the queries when users attempt to log in
     AUTH_LDAP_BIND_DN = "<LDAP_bind_DN>" #changeme
@@ -104,7 +82,9 @@ data:
 
     AUTH_LDAP_GROUP_SEARCH = LDAPSearch("<LDAP_group_search>") #changeme
 
-    AUTH_LDAP_GROUP_TYPE = NestedGroupOfNamesType()
+    # Choose type applicable to your LDAP
+    #AUTH_LDAP_GROUP_TYPE = NestedGroupOfNamesType()
+    AUTH_LDAP_GROUP_TYPE = GroupOfNamesType()
 
     AUTH_LDAP_USER_FLAGS_BY_GROUP = {
       "is_active": ["<LDAP_group>"], #changeme
@@ -115,5 +95,5 @@ data:
     AUTH_LDAP_MIRROR_GROUPS = {"<LDAP_groups_to_mirror>"} #changeme
 
     AUTH_LDAP_FIND_GROUP_PERMS = True
-    AUTH_LDAP_CACHE_GROUPS = False
+    #AUTH_LDAP_CACHE_GROUPS = False
     AUTH_LDAP_GROUP_CACHE_TIMEOUT = 3600

@@ -1,4 +1,4 @@
-apiVersion: extensions/v1beta1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: netbox
@@ -18,109 +18,29 @@ spec:
       containers:
       # NetBox container using the netbox-docker image: https://github.com/netbox-community/netbox-docker
       - name: netbox
-        image: netboxcommunity/netbox:v2.8.5-ldap
+        image: quay.io/netboxcommunity/netbox:v2.11.12-ldap
         ports:
         - name: http
-          containerPort: 80
-        readinessProbe: # will mark the pod as ready once the initialization script is completed and will probe every 5 seconds
+          containerPort: 8080
+        readinessProbe: # will mark the pod as ready once the initialization script is completed and will probe every 20 seconds
           httpGet:
             path: /
             port: http
           initialDelaySeconds: 5
-          periodSeconds: 5
-        env:
-        # More configuration can be added via: https://netbox.readthedocs.io/en/stable/configuration/optional-settings/
-        - name: ALLOWED_HOSTS
-          valueFrom:
-            configMapKeyRef:
-              key: ALLOWED_HOSTS
+          periodSeconds: 20
+        envFrom:
+          - configMapRef:
               name: netbox-configmap
-        - name: CHANGELOG_RETENTION
-          valueFrom:
-            configMapKeyRef:
-              key: CHANGELOG_RETENTION
-              name: netbox-configmap
-        - name: DB_HOST
-          valueFrom:
-            configMapKeyRef:
-              key: DB_HOST
-              name: netbox-configmap
-        - name: DB_NAME
-          valueFrom:
-            configMapKeyRef:
-              key: DB_NAME
-              name: netbox-configmap
-        - name: DB_USER
-          valueFrom:
-            configMapKeyRef:
-              key: DB_USER
-              name: netbox-configmap
-        - name: EMAIL_FROM
-          valueFrom:
-            configMapKeyRef:
-              key: EMAIL_FROM
-              name: netbox-configmap
-        - name: EMAIL_PORT
-          valueFrom:
-            configMapKeyRef:
-              key: EMAIL_PORT
-              name: netbox-configmap
-        - name: EMAIL_SERVER
-          valueFrom:
-            configMapKeyRef:
-              key: EMAIL_SERVER
-              name: netbox-configmap
-        - name: EMAIL_TIMEOUT
-          valueFrom:
-            configMapKeyRef:
-              key: EMAIL_TIMEOUT
-              name: netbox-configmap
-        - name: EMAIL_USERNAME
-          valueFrom:
-            configMapKeyRef:
-              key: EMAIL_USERNAME
-              name: netbox-configmap
-        - name: EXEMPT_VIEW_PERMISSIONS
-          valueFrom:
-            configMapKeyRef:
-              key: EXEMPT_VIEW_PERMISSIONS
-              name: netbox-configmap
-        - name: LOGIN_REQUIRED
-          valueFrom:
-            configMapKeyRef:
-              key: LOGIN_REQUIRED
-              name: netbox-configmap
-        - name: METRICS_ENABLED
-          valueFrom:
-            configMapKeyRef:
-              key: METRICS_ENABLED
-              name: netbox-configmap
-        - name: NETBOX_USERNAME
-          valueFrom:
-            configMapKeyRef:
-              key: NETBOX_USERNAME
-              name: netbox-configmap
-        - name: REDIS_HOST
-          valueFrom:
-            configMapKeyRef:
-              key: REDIS_HOST
-              name: netbox-configmap
-        - name: REDIS_CACHE_HOST
-          valueFrom:
-            configMapKeyRef:
-              key: REDIS_CACHE_HOST
-              name: netbox-configmap
-        - name: REDIS_PORT
-          valueFrom:
-            configMapKeyRef:
-              key: REDIS_PORT
-              name: netbox-configmap
-        - name: REDIS_CACHE_PORT
-          valueFrom:
-            configMapKeyRef:
-              key: REDIS_CACHE_PORT
-              name: netbox-configmap
-
+        lifecycle: # Will run the post-startup scripts detailed in netbox-startup-configmap.yaml
+          postStart:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - >
+                  bash /home/install-plugins.sh &&
+                  bash /home/start-rqworker.sh &&
+                  bash /home/nginx-caching-fix.sh
         volumeMounts:
         # Mounting secrets for netbox and other related components
         - name: auth-ldap-bind-password
@@ -153,37 +73,70 @@ spec:
           mountPath: /run/secrets/superuser_password
           subPath: superuser_password
           readOnly: true
-
         # Persistent Volume paths
-        - name: netbox-static-files # Shared directory with the nginx container for static files
-          mountPath: /opt/netbox/netbox/static
         - name: netbox-media-files # Allows for multiple replicas of the netbox pod to be available
-          mountPath: /etc/netbox/media
+          mountPath: /opt/netbox/netbox/media
         - name: ldap-config # Allows for LDAP authentication to work
           subPath: ldap_config.py
           mountPath: /opt/netbox/netbox/netbox/ldap_config.py
-
-      # nginx sidecar container used to serve static files
-      - name: nginx
-        image: nginx:1.17.3-alpine
-        volumeMounts:
-        - name: netbox-static-files
-          mountPath: /opt/netbox/netbox/static
-        - name: netbox-nginx-config
-          subPath: nginx.conf
-          mountPath: /etc/nginx/nginx.conf
-
+        - mountPath: /etc/netbox/config/netbox-plugins.py
+          name: netbox-plugins
+          subPath: netbox-plugins.py
+        - mountPath: /home/install-plugins.sh
+          name: install-plugins
+          subPath: install-plugins.sh
+        - mountPath: /home/start-rqworker.sh
+          name: start-rqworker
+          subPath: start-rqworker.sh
+        - mountPath: /home/nginx-caching-fix.sh
+          name: nginx-caching-fix
+          subPath: nginx-caching-fix.sh
+        - name: sso-saml2-xml
+          mountPath: /opt/netbox/sso-saml2.xml
+          subPath: sso-saml2-metadata.xml
       restartPolicy: Always
-
       volumes:
-      # Secret volumes
-      - name: netbox-secret # contains most netbox secrets that would be used
-        secret:
-          secretName: netbox-secret
-      - name: netbox-redis # contains the password used for redis caching
-        secret:
-          secretName: netbox-redis
-
+      # Reference to configmaps and PVs
+      - name: netbox-media-files
+        persistentVolumeClaim:
+          claimName: netbox-media-pvc
+          readOnly: false
+      - name: ldap-config
+        configMap:
+          name: netbox-configmap
+          items:
+            - key: ldap_config.py
+              path: ldap_config.py
+      - name: netbox-plugins
+        configMap:
+          name: startup-configmap
+          items:
+          - key: "netbox-plugins.py"
+            path: "netbox-plugins.py"
+      - name: install-plugins
+        configMap:
+          name: startup-configmap
+          items:
+          - key: "install-plugins.sh"
+            path: "install-plugins.sh"
+      - name: start-rqworker
+        configMap:
+          name: startup-configmap
+          items:
+          - key: "start-rqworker.sh"
+            path: "start-rqworker.sh"
+      - name: nginx-caching-fix
+        configMap:
+          name: startup-configmap
+          items:
+          - key: "nginx-caching-fix.sh"
+            path: "nginx-caching-fix.sh"
+      - name: sso-saml2-xml
+        configMap:
+          name: sso-saml2-xml
+          items:
+            - key: sso-saml2-metadata.xml
+              path: sso-saml2-metadata.xml
       # Populate via secret
       - name: auth-ldap-bind-password
         secret:
@@ -233,23 +186,3 @@ spec:
           items:
           - key: superuser_api_token
             path: superuser_api_token
-
-      # Reference to configmaps and PVs
-      - name: ldap-config
-        configMap:
-          name: netbox-configmap
-          items:
-            - key: ldap_config.py
-              path: ldap_config.py
-      - name: netbox-nginx-config
-        configMap:
-          name: netbox-configmap
-          items:
-            - key: nginx.conf
-              path: nginx.conf
-      - name: netbox-static-files
-        emptyDir: {}
-      - name: netbox-media-files
-        persistentVolumeClaim:
-          claimName: netbox-media-pvc
-          readOnly: false

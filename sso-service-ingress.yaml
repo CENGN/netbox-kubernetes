@@ -1,0 +1,77 @@
+### SSO service definitions
+apiVersion: v1
+kind: Service
+metadata:
+  name: netbox-sso
+  namespace: netbox-community
+  labels:
+    k8s-app: netbox
+spec:
+  ports:
+  - port: 80
+    targetPort: http
+  selector:
+    k8s-app: netbox
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: netbox-sso-login
+  namespace: netbox-community
+  labels:
+    k8s-app: netbox
+spec:
+  ports:
+  - port: 80
+    targetPort: http
+  selector:
+    k8s-app: netbox
+---
+### SSO ingress definitions
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    kubernetes.io/tls-acme: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "0"
+    nginx.ingress.kubernetes.io/rewrite-target: /api/plugins/sso/$1
+  name: netbox-sso
+  namespace: netbox-community
+spec:
+  rules:
+  - host: netbox.company.ca #changeme
+    http:
+      paths:
+      - backend:
+          serviceName: netbox-sso
+          servicePort: 80
+        path: /sso/(.*)
+  tls:
+  - hosts:
+    - netbox.company.ca #changeme
+    secretName: netbox-tls
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    kubernetes.io/tls-acme: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "0"
+    nginx.ingress.kubernetes.io/rewrite-target: /api/plugins/sso/login/$1
+  name: netbox-sso-login
+  namespace: netbox-community
+spec:
+  rules:
+  - host: netbox.company.ca #changeme
+    http:
+      paths:
+      - backend:
+          serviceName: netbox-sso-login
+          servicePort: 80
+        path: /login/(.*)
+  tls:
+  - hosts:
+    - netbox.company.ca #changeme
+    secretName: netbox-tls

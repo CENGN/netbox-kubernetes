@@ -7,12 +7,12 @@ Alternative installation instructions for NetBox using Kubernetes. The main valu
 * The netbox deployment will work with existing redis and postgresql installations, just ensure that the configurations are changed in `netbox-configmap.yaml` and `netbox-deployment.yaml`
 * Relevant places that will need to be changed are indicated by the inline comment `#changeme`
 * The manifests were tested against the following:
-    * NetBox: 2.8.5
+    * NetBox: 2.11.12
     * Postgresql: 11.6.0
     * Redis: 5.0.5
     * Kubernetes: 1.17.4
-    * Rook: 1.3.2
-    * Ceph: 15.2.1
+    * Rook: 1.4.2
+    * Ceph: 15.2.4
 
 ## Installation
 
@@ -50,6 +50,18 @@ To get NetBox up and running on a Kubernetes cluster:
 1. A PostgreSQL DB for netbox is up and running with all the necessary schema
 1. Redis caching enabled and working
 
+##  Enabling SSO (Optional)
+
+There are plugins available in NetBox in order to setup NetBox to authenticate against an SSO authentication service. In this instance, we have used the django3_auth_saml2, and netbox-plugin-auth-saml2 plugins, and this was tested against JumpCloud.
+
+1. Uncomment `REMOTE_AUTH_BACKEND: 'django3_saml2_nbplugin.backends.SAML2CustomAttrUserBackend'` in `netbox-configmap.yaml` and `PLUGINS = ['django3_saml2_nbplugin']` in `startup-configmap.yaml`, making sure to comment out the other instance of those variables
+1. Fill in `sso-saml2-configmap.yaml` with the metadata acquired from your SSO authentication source
+1. Deploy the
+
+### Verification
+
+1.
+
 ## Deploying an Ingress (Optional)
 
 This isn't necessary for just testing. If you don't want to deploy the ingress resource, you should switch the service to use a NodePort so you can access it. nginx-ingress was used as the Ingress Controller in this example
@@ -78,6 +90,13 @@ The manifests were generated against a prometheus/grafana deployment deployed vi
 
 1. Prometheus target exists and is reporting ready for all pods deployed
 1. Dashboard should report information regarding the metrics from Django backend
+
+## Upgrading from NetBox v2.8.x
+
+If the database was instantiated using a previous version of NetBox used in this repository, cable tracing will be broken when changing versions. It is necessary to run the the cable trace fix command in the NetBox container
+
+1. `kubectl exec -it -n netbox-community netbox-<id> -- bash`
+1. `./manage.py trace_paths`
 
 ## References
 

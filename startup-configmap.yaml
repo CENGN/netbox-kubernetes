@@ -1,0 +1,87 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: startup-configmap
+  namespace: netbox-community
+data:
+  # NetBox plugins definition and configuration
+  netbox-plugins.py: |
+    # Enter every plugin to be enabled by NetBox
+    # Uncomment 'django3_saml2_nbplugin' if you want to enable SSO
+    PLUGINS = []
+    #PLUGINS = ['django3_saml2_nbplugin']
+    # NetBox plugins configuration definition
+    PLUGINS_CONFIG = {
+        'django3_saml2_nbplugin': {
+
+            # Use the Netbox default remote backend
+            # 'AUTHENTICATION_BACKEND': 'netbox.authentication.RemoteUserBackend',
+            'AUTHENTICATION_BACKEND': 'django3_saml2_nbplugin.backends.SAML2CustomAttrUserBackend',
+            # 'AUTHENTICATION_BACKEND': 'django3_saml2_nbplugin.backends.SAML2AttrUserBackend',
+
+            # Custom URL to validate incoming SAML requests against
+            'ASSERTION_URL': 'https://netbox.company.ca', #changeme
+
+            # Populates the Issuer element in authn reques e.g defined as "Audience URI (SP Entity ID)" in SSO
+            'ENTITY_ID': 'https://netbox.company.ca', #changeme
+
+            # # The next URL used to redirect the User after login is successful
+            'DEFAULT_NEXT_URL': '/',
+
+            # # The URL to be used for SSO sign-in purposes
+            # 'DEFAULT_SSO_ACS_URL': '/sso/acs/',
+
+            # Metadata is required, choose either remote url
+            #'METADATA_AUTO_CONF_URL': "https://mycorp.okta.com/appd/sajfalkdsflkads/sso/saml/metadata",
+            # or local file path
+            'METADATA_LOCAL_FILE_PATH': '/opt/netbox/sso-saml2.xml',
+
+            # Settings for SAML2CustomAttrUserBackend. Optional.
+            'CUSTOM_ATTR_BACKEND': {
+                # Attribute containing the username. Optional.
+                'USERNAME_ATTR': 'user_name',
+                # Attribute containing the user's email. Optional.
+                'MAIL_ATTR': 'email',
+                # Attribute containing the user's first name. Optional.
+                'FIRST_NAME_ATTR': 'first_name',
+                # Attribute containing the user's last name. Optional.
+                'LAST_NAME_ATTR': 'last_name',
+                # Set to True to always update the user on logon
+                # from SAML attributes on logon. Defaults to False.
+                'ALWAYS_UPDATE_USER': True,
+                # Attribute that contains groups. Optional.
+                'GROUP_ATTR': 'memberOf',
+                # Dict of user flags to groups.
+                # If the user is in the group then the flag will be set to True. Optional.
+                # Used as an override to the same variable set in ldap_config.py in netbox-configmap. It is commented out since it is unnecessary to have the already set configurations overrided.
+                #'FLAGS_BY_GROUP': {
+                #    'is_active': 'SSO_ACTIVE_GROUP',
+                #    'is_staff': 'SSO_STAFF_GROUP',
+                #    'is_superuser': 'SSO_SUPERUSER_GROUP'
+                #},
+                # Dict of SAML groups to NetBox groups. Optional.
+                # Groups must be created beforehand in NetBox.
+                # Used to populate NetBox defined user groups (right) with members of groups in the SSO source (left). Not necessary if NetBox groups and members are already defined in the SSO source
+                #'GROUP_MAPPINGS': {
+                #     'SSO_GROUP1': 'LOCAL_NETBOX_GROUP1',
+                #     'SSO_GROUP2': 'LOCAL_NETBOX_GROUP2'
+                #}
+            }
+        }
+    }
+
+  # Script for installing NetBox plugins packages
+  install-plugins.sh: |
+    source /opt/netbox/venv/bin/activate
+    # SSO implementation plugin packages
+    apk add xmlsec
+    pip install django3_auth_saml2
+    pip install netbox-plugin-auth-saml2
+
+  # Script for starting rqworker, which handles reports
+  start-rqworker.sh: |
+    /opt/netbox/venv/bin/python /opt/netbox/netbox/manage.py rqworker &>/dev/null &disown;
+
+  # Script for fixing permission issue in unit temporary folder
+  nginx-caching-fix.sh: |
+    chown unit:root -R /opt/unit/tmp/
