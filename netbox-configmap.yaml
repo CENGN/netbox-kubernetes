@@ -23,6 +23,7 @@ data:
   METRICS_ENABLED: "true"
   NETBOX_USERNAME: guest
   REDIS_HOST: netbox-community-redis-master
+  REDIS_CACHE_HOST: netbox-community-redis-master
   REDIS_PORT: "6379"
   REDIS_CACHE_PORT: "6379"
   REDIS_DATABASE: "0"
