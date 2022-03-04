@@ -9,7 +9,7 @@ data:
   #changeme
   ALLOWED_HOSTS: '*'
   CHANGELOG_RETENTION: "90"
-  DB_HOST: netbox-community-postgresql
+  DB_HOST: netbox-postgresql
   DB_NAME: netbox
   DB_USER: netbox
   EMAIL_FROM: netbox@bar.com
@@ -19,49 +19,27 @@ data:
   EMAIL_USERNAME: foo
   EXEMPT_VIEW_PERMISSIONS: ''
   LOGIN_REQUIRED: "true"
+  MEDIA_ROOT: /opt/netbox/netbox/media
   METRICS_ENABLED: "true"
   NETBOX_USERNAME: guest
-  REDIS_HOST: netbox-community-redis-master
+  REDIS_HOST: netbox-redis-master
+  REDIS_CACHE_HOST: netbox-redis-master
   REDIS_PORT: "6379"
   REDIS_CACHE_PORT: "6379"
   REDIS_DATABASE: "0"
   REDIS_CACHE_DATABASE: "1"
   SUPERUSER_EMAIL: admin@example.com
   SUPERUSER_NAME: admin
-
-  # ngin.conf
-  # client_max_body_size used to increase limit on attachement sizes
-  nginx.conf: |
-    worker_processes 1;
-    events {
-        worker_connections  1024;
-    }
-    http {
-        include       /etc/nginx/mime.types;
-        default_type  application/octet-stream;
-        sendfile        on;
-        tcp_nopush     on;
-        keepalive_timeout  65;
-        gzip  on;
-        server_tokens off;
-        server {
-            client_max_body_size 10M;
-            listen 80;
-            server_name 127.0.0.1;
-            access_log off;
-            location /static/ {
-                expires 30d;
-                alias /opt/netbox/netbox/static/;
-            }
-            location / {
-                proxy_pass http://127.0.0.1:8001;
-                proxy_set_header X-Forwarded-Host $http_host;
-                proxy_set_header X-Real-IP $remote_addr;
-                proxy_set_header X-Forwarded-Proto $scheme;
-                add_header P3P 'CP="ALL DSP COR PSAa PSDa OUR NOR ONL UNI COM NAV"';
-            }
-        }
-    }
+  MAINTENANCE_MODE: 'False'
+  DEBUG: 'False'
+  REMOTE_AUTH_ENABLED: 'True'
+  REMOTE_AUTH_AUTO_CREATE_USER: 'True'
+  # Regular LDAP Backend
+  REMOTE_AUTH_BACKEND: netbox.authentication.LDAPBackend
+  # SSO Enabled Backend
+  #REMOTE_AUTH_BACKEND: 'django3_saml2_nbplugin.backends.SAML2CustomAttrUserBackend'
+  REMOTE_AUTH_HEADER: 'HTTP_REMOTE_USER'
+  REMOTE_AUTH_DEFAULT_GROUPS: 'sso-default-user' #changeme
 
   # LDAP configuration against Microsoft Acive Directory
   # For more information around LDAP, see https://netbox.readthedocs.io/en/stable/installation/4-ldap/
@@ -79,13 +57,14 @@ data:
             with f:
                 return f.readline().strip()
 
-    AUTH_LDAP_SERVER_URI = "<LDAP_server_URI" #changeme
+    AUTH_LDAP_SERVER_URI = "<LDAP_server_URI>" #changeme
     AUTH_LDAP_CONNECTION_OPTIONS = {
       ldap.OPT_REFERRALS: 0
     }
-    AUTH_LDAP_START_TLS = True
+    # Uncomment line below if using TLS
+    #AUTH_LDAP_START_TLS = True
 
-    # Service user credentials. This accout will be making all the queries when users attempt to log in
+    # Service user credentials. This account will be making all the queries when users attempt to log in
     AUTH_LDAP_BIND_DN = "<LDAP_bind_DN>" #changeme
     AUTH_LDAP_BIND_PASSWORD = read_secret('auth_ldap_bind_password')
     LDAP_IGNORE_CERT_ERRORS = True
@@ -99,21 +78,29 @@ data:
     AUTH_LDAP_USER_ATTR_MAP = {
         "first_name": "givenName",
         "last_name": "sn",
+        "username": "uid",
         "email": "mail"
     }
 
     AUTH_LDAP_GROUP_SEARCH = LDAPSearch("<LDAP_group_search>") #changeme
 
-    AUTH_LDAP_GROUP_TYPE = NestedGroupOfNamesType()
+    # Choose type applicable to your LDAP
+    #AUTH_LDAP_GROUP_TYPE = NestedGroupOfNamesType()
+    AUTH_LDAP_GROUP_TYPE = GroupOfNamesType()
 
+    # Groups defined in LDAP source and described here will be assigned the following permissions
     AUTH_LDAP_USER_FLAGS_BY_GROUP = {
+      # Allowed to navigate regular NetBox interface. Specific available actions are determined by individual user and group permissions
       "is_active": ["<LDAP_group>"], #changeme
+      # Allowed to navigate NetBox Administration menu. Specific available actions are determined by individual user and group permissions
       "is_staff": ["<LDAP_group>"], #changeme
+      # Is given full admin permissions across this NetBox deployment, regardless of individual user or group permissions
       "is_superuser": ["<LDAP_group>"], #changeme
     }
 
+    # Groups defined in LDAP source and described here will be created within NetBox Authentication
     AUTH_LDAP_MIRROR_GROUPS = {"<LDAP_groups_to_mirror>"} #changeme
 
     AUTH_LDAP_FIND_GROUP_PERMS = True
-    AUTH_LDAP_CACHE_GROUPS = False
+    #AUTH_LDAP_CACHE_GROUPS = False
     AUTH_LDAP_GROUP_CACHE_TIMEOUT = 3600
