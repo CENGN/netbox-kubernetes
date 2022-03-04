@@ -14,10 +14,12 @@ data:
     PLUGINS_CONFIG = {
         'django3_saml2_nbplugin': {
 
-            # Use the Netbox default remote backend
+            # Use the NetBox default remote backend
             # 'AUTHENTICATION_BACKEND': 'netbox.authentication.RemoteUserBackend',
-            'AUTHENTICATION_BACKEND': 'django3_saml2_nbplugin.backends.SAML2CustomAttrUserBackend',
+            # Use the NetBox LDAP backend, default configs
             # 'AUTHENTICATION_BACKEND': 'django3_saml2_nbplugin.backends.SAML2AttrUserBackend',
+            # Use the NetBox LDAP backend, configs defined below
+            'AUTHENTICATION_BACKEND': 'django3_saml2_nbplugin.backends.SAML2CustomAttrUserBackend',
 
             # Custom URL to validate incoming SAML requests against
             'ASSERTION_URL': 'https://netbox.company.ca', #changeme
@@ -53,12 +55,13 @@ data:
                 'GROUP_ATTR': 'memberOf',
                 # Dict of user flags to groups.
                 # If the user is in the group then the flag will be set to True. Optional.
-                # Used as an override to the same variable set in ldap_config.py in netbox-configmap. It is commented out since it is unnecessary to have the already set configurations overrided.
-                #'FLAGS_BY_GROUP': {
-                #    'is_active': 'SSO_ACTIVE_GROUP',
-                #    'is_staff': 'SSO_STAFF_GROUP',
-                #    'is_superuser': 'SSO_SUPERUSER_GROUP'
-                #},
+                # Used as an override to the same variable set in ldap_config.py in netbox-configmap
+                # It is recommended to fill these in as the same configurations from netbox-configmap.yaml function inconsistently when SSO is enabled
+                'FLAGS_BY_GROUP': {
+                    'is_active': 'SSO_ACTIVE_GROUP', #changeme
+                    'is_staff': 'SSO_STAFF_GROUP', #changeme
+                    'is_superuser': 'SSO_SUPERUSER_GROUP' #hangeme
+                },
                 # Dict of SAML groups to NetBox groups. Optional.
                 # Groups must be created beforehand in NetBox.
                 # Used to populate NetBox defined user groups (right) with members of groups in the SSO source (left). Not necessary if NetBox groups and members are already defined in the SSO source

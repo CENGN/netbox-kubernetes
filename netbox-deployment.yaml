@@ -146,9 +146,9 @@ spec:
             path: auth_ldap_bind_password
       - name: db-password
         secret:
-          secretName: netbox-community-postgresql
+          secretName: netbox-postgresql
           items:
-          - key: postgresql-password
+          - key: password
             path: db_password
       - name: email-password
         secret:

@@ -9,7 +9,7 @@ data:
   #changeme
   ALLOWED_HOSTS: '*'
   CHANGELOG_RETENTION: "90"
-  DB_HOST: netbox-community-postgresql
+  DB_HOST: netbox-postgresql
   DB_NAME: netbox
   DB_USER: netbox
   EMAIL_FROM: netbox@bar.com
@@ -22,8 +22,8 @@ data:
   MEDIA_ROOT: /opt/netbox/netbox/media
   METRICS_ENABLED: "true"
   NETBOX_USERNAME: guest
-  REDIS_HOST: netbox-community-redis-master
-  REDIS_CACHE_HOST: netbox-community-redis-master
+  REDIS_HOST: netbox-redis-master
+  REDIS_CACHE_HOST: netbox-redis-master
   REDIS_PORT: "6379"
   REDIS_CACHE_PORT: "6379"
   REDIS_DATABASE: "0"
@@ -64,7 +64,7 @@ data:
     # Uncomment line below if using TLS
     #AUTH_LDAP_START_TLS = True
 
-    # Service user credentials. This accout will be making all the queries when users attempt to log in
+    # Service user credentials. This account will be making all the queries when users attempt to log in
     AUTH_LDAP_BIND_DN = "<LDAP_bind_DN>" #changeme
     AUTH_LDAP_BIND_PASSWORD = read_secret('auth_ldap_bind_password')
     LDAP_IGNORE_CERT_ERRORS = True
@@ -78,6 +78,7 @@ data:
     AUTH_LDAP_USER_ATTR_MAP = {
         "first_name": "givenName",
         "last_name": "sn",
+        "username": "uid",
         "email": "mail"
     }
 
@@ -87,12 +88,17 @@ data:
     #AUTH_LDAP_GROUP_TYPE = NestedGroupOfNamesType()
     AUTH_LDAP_GROUP_TYPE = GroupOfNamesType()
 
+    # Groups defined in LDAP source and described here will be assigned the following permissions
     AUTH_LDAP_USER_FLAGS_BY_GROUP = {
+      # Allowed to navigate regular NetBox interface. Specific available actions are determined by individual user and group permissions
       "is_active": ["<LDAP_group>"], #changeme
+      # Allowed to navigate NetBox Administration menu. Specific available actions are determined by individual user and group permissions
       "is_staff": ["<LDAP_group>"], #changeme
+      # Is given full admin permissions across this NetBox deployment, regardless of individual user or group permissions
       "is_superuser": ["<LDAP_group>"], #changeme
     }
 
+    # Groups defined in LDAP source and described here will be created within NetBox Authentication
     AUTH_LDAP_MIRROR_GROUPS = {"<LDAP_groups_to_mirror>"} #changeme
 
     AUTH_LDAP_FIND_GROUP_PERMS = True

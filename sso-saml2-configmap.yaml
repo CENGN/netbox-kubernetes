@@ -7,4 +7,4 @@ kind: ConfigMap
 metadata:
   creationTimestamp: null
   name: sso-saml2-xml
-  namespace: netbox
+  namespace: netbox-community
