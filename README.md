@@ -109,7 +109,7 @@ There are plugins available in NetBox in order to setup NetBox to authenticate a
 1. Once logged in, confirm members of the groups described in `FLAGS_BY_GROUP` have the correct access
     * `is_active` defined group members only are allowed to navigate the regular NetBox interface. Specific available actions are determined by individual user and group permissions defined in NetBox permissions
     * `is_staff` defined group members are allowed to navigate the NetBox Administration menu. Specific available actions are determined by individual user and group permissions defined in NetBox permissions
-    * `is_superuser` defined group members should is given full read/write admin permissions across this NetBox deployment regardless of individual user and group permissions defined in NetBox permissions
+    * `is_superuser` defined group members are given full read/write admin permissions across this NetBox deployment regardless of individual user and group permissions defined in NetBox permissions
 
 ## Deploying Metrics (Optional)
 
