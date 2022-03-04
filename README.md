@@ -4,15 +4,20 @@ Alternative installation instructions for NetBox using Kubernetes. The main valu
 
 ## Notes
 
-* The netbox deployment will work with existing redis and postgresql installations, just ensure that the configurations are changed in `netbox-configmap.yaml` and `netbox-deployment.yaml`
+* The NetBox deployment will work with existing redis and postgresql installations, just ensure that the configurations are changed in `netbox-configmap.yaml` and `netbox-deployment.yaml`
 * Relevant places that will need to be changed are indicated by the inline comment `#changeme`
 * The manifests were tested against the following:
     * NetBox: 2.11.12
-    * Postgresql: 11.6.0
-    * Redis: 5.0.5
+    * Postgresql: 14.2.0
+    * Redis: 6.2.6
     * Kubernetes: 1.17.4
     * Rook: 1.4.2
     * Ceph: 15.2.4
+* LDAP configurations were tested against the following:
+    * Windows Server 2012 - Active Directory
+    * JumpCloud - Cloud Directory
+* SSO configurations were tested against the following:
+    * JumpCloud - Cloud Directory
 
 ## Installation
 
