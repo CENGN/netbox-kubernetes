@@ -495,8 +495,8 @@ primary:
   ## @param primary.nodeSelector Node labels for PostgreSQL primary pods assignment
   ## ref: https://kubernetes.io/docs/user-guide/node-selection/
   ##
-  #nodeSelector: {}
-  nodeSelector: {"workerClass": "infra"}
+  nodeSelector: {}
+  #nodeSelector: {"workerClass": "infra"}
   ## @param primary.tolerations Tolerations for PostgreSQL primary pods assignment
   ## ref: https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/
   ##
